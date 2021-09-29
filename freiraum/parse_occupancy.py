@@ -7,6 +7,7 @@ import re
 from bs4 import BeautifulSoup
 from itertools import product
 
+
 def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
     """
     parses an html table into a 2D matrix, filling appropriate fields based on
@@ -14,12 +15,12 @@ def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
     > adjusted from https://stackoverflow.com/questions/48393253/how-to-parse-table-with-rowspan-and-colspan
     """
     rowspans = []  # track pending rowspans
-    rows = table_tag.find_all('tr')
+    rows = table_tag.find_all("tr")
 
     # first scan, see how many columns we need
     colcount = 0
     for r, row in enumerate(rows):
-        cells = row.find_all(['td', 'th'], recursive=False)
+        cells = row.find_all(["td", "th"], recursive=False)
         # count columns (including spanned).
         # add active rowspans from preceding rows
         # we *ignore* the colspan value on the last cell, to prevent
@@ -29,9 +30,12 @@ def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
         # to the last cell; ignore it elsewhere.
         colcount = max(
             colcount,
-            sum(int(c.get('colspan', 1)) or 1 for c in cells[:-1]) + len(cells[-1:]) + len(rowspans))
+            sum(int(c.get("colspan", 1)) or 1 for c in cells[:-1])
+            + len(cells[-1:])
+            + len(rowspans),
+        )
         # update rowspan bookkeeping; 0 is a span to the bottom.
-        rowspans += [int(c.get('rowspan', 1)) or len(rows) - r for c in cells]
+        rowspans += [int(c.get("rowspan", 1)) or len(rows) - r for c in cells]
         rowspans = [s - 1 for s in rowspans if s > 1]
     # it doesn't matter if there are still rowspan numbers 'active'; no extra
     # rows to show in the table means the larger than 1 rowspan numbers in the
@@ -43,7 +47,7 @@ def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
     rowspans = {}  # track pending rowspans, column number mapping to count
     for row, row_elem in enumerate(rows):
         span_offset = 0  # how many columns are skipped due to row and colspans
-        for col, cell in enumerate(row_elem.find_all(['td', 'th'], recursive=False)):
+        for col, cell in enumerate(row_elem.find_all(["td", "th"], recursive=False)):
             # adjust for preceding row and colspans
             col += span_offset
             while rowspans.get(col, 0):
@@ -51,8 +55,8 @@ def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
                 col += 1
 
             # fill table data
-            rowspan = rowspans[col] = int(cell.get('rowspan', 1)) or len(rows) - row
-            colspan = int(cell.get('colspan', 1)) or colcount - col
+            rowspan = rowspans[col] = int(cell.get("rowspan", 1)) or len(rows) - row
+            colspan = int(cell.get("colspan", 1)) or colcount - col
             # next column is offset by the colspan
             span_offset += colspan - 1
             value = value_f(cell)
@@ -69,6 +73,7 @@ def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
 
     return table
 
+
 MONTH_TO_DAY = {
     1: "Jan",
     2: "Feb",
@@ -84,6 +89,7 @@ MONTH_TO_DAY = {
     12: "Dez",
 }
 
+
 @dataclass
 class Room:
     region: str
@@ -94,10 +100,12 @@ class Room:
     rektoratInListe: str = "true"
     raumInRaumgruppe: str = "true"
 
+
 @dataclass
 class Class:
     title: str
     organization: Optional[str]
+
 
 class Occupancy(Enum):
     CLOSED = "#cccccc"
@@ -106,12 +114,14 @@ class Occupancy(Enum):
     UNKNOWN = None
     INVALID = "#eeeeee"
 
+
 @dataclass
 class Timeslot:
     state: Occupancy
     begin: datetime
     end: datetime
     event: Optional[Class] = None
+
 
 def parse_td(x: BeautifulSoup) -> (Optional[Class], Occupancy):
     # if the background color is invalid, the whole cell is part of the "frame"
@@ -121,25 +131,28 @@ def parse_td(x: BeautifulSoup) -> (Optional[Class], Occupancy):
     occupancy = Occupancy(x.attrs["bgcolor"])
 
     # is there a title for this class?
-    title_list = x.find_all(attrs={"color":"#ffffff"})
+    title_list = x.find_all(attrs={"color": "#ffffff"})
     if not title_list:
         # if not, the room is empty/closed/cell invalid
         return (None, occupancy)
     else:
         # otherwise find title and potentially organisation of class
         title = title_list[0].text.strip()
-        organization_list = x.find_all(attrs={"color":"#dddddd"})
+        organization_list = x.find_all(attrs={"color": "#dddddd"})
         organization = organization_list[0].text.strip() if organization_list else None
         return (Class(title, organization), occupancy)
 
+
 def transpose(l):
     return list(map(list, zip(*l)))
+
 
 def parse_date(date_string: str):
     (day, month, year) = tuple(map(int, date_string.split(".")))
     return datetime(day=day, month=month, year=year)
 
-def room_occupancy(room: Room, date: date=date.today()):
+
+def room_occupancy(room: Room, date: date = date.today()):
     """
     For a room and date fetches and returns the occupancy of a room in the week of the date
     :param room:
@@ -155,16 +168,21 @@ def room_occupancy(room: Room, date: date=date.today()):
     }
     # fetch room occupancy
     r = requests.post(
-        "http://www.rauminfo.ethz.ch/Rauminfo/Rauminfo.do",
-        data=post_data
+        "http://www.rauminfo.ethz.ch/Rauminfo/Rauminfo.do", data=post_data
     )
     site = r.text
     print(site, file=open("room_occupancy.html", "w"))
     # extract the actual start of the week
-    match = next(iter(re.finditer(r"(?P<week_begin>\d\d\.\d\d\.\d\d\d\d)&nbsp;bis&nbsp;(?P<week_end>\d\d\.\d\d\.\d\d\d\d)", site)))
+    match = next(
+        iter(
+            re.finditer(
+                r"(?P<week_begin>\d\d\.\d\d\.\d\d\d\d)&nbsp;bis&nbsp;(?P<week_end>\d\d\.\d\d\.\d\d\d\d)",
+                site,
+            )
+        )
+    )
     week_begin = parse_date(match.group("week_begin"))
-    #week_end = parse_date(match.group("week_end"))
-
+    # week_end = parse_date(match.group("week_end"))
 
     # parse the occupancy table
     soup = BeautifulSoup(site)
@@ -174,33 +192,47 @@ def room_occupancy(room: Room, date: date=date.today()):
 
     # the occupancy table has one row frame and tow cols frame (on the left)
     # the remainder is one slot per course, resolved in quarter-hours
-    room_occupancy: List[List[Tuple[Optional[Class], Occupancy]]] = transpose(room_occupancy)
+    room_occupancy: List[List[Tuple[Optional[Class], Occupancy]]] = transpose(
+        room_occupancy
+    )
     timeslots = []
     for colc, col in enumerate(room_occupancy[2:]):
         cur_start_day = week_begin + timedelta(days=colc)
         # there is an unknown filling from the day before 22:00 to 7:00
-        cur_event = Timeslot(state=Occupancy.UNKNOWN, begin=cur_start_day-timedelta(hours=2), end=cur_start_day+timedelta(hours=7))
+        cur_event = Timeslot(
+            state=Occupancy.UNKNOWN,
+            begin=cur_start_day - timedelta(hours=2),
+            end=cur_start_day + timedelta(hours=7),
+        )
         for rowc, row in enumerate(col[1:]):
-            cur_start_time_minutes = cur_start_day + timedelta(hours=7) + rowc * timedelta(minutes=15)
-            cur_end_time_minutes = cur_start_day + timedelta(hours=7) + (rowc+1) * timedelta(minutes=15)
+            cur_start_time_minutes = (
+                cur_start_day + timedelta(hours=7) + rowc * timedelta(minutes=15)
+            )
+            cur_end_time_minutes = (
+                cur_start_day + timedelta(hours=7) + (rowc + 1) * timedelta(minutes=15)
+            )
             cur_event.end = cur_start_time_minutes
             if not (cur_event.event == row[0] and cur_event.state == row[1]):
                 timeslots.append(cur_event)
-                cur_event = Timeslot(state=row[1], event=row[0], begin=cur_start_time_minutes, end=cur_end_time_minutes)
+                cur_event = Timeslot(
+                    state=row[1],
+                    event=row[0],
+                    begin=cur_start_time_minutes,
+                    end=cur_end_time_minutes,
+                )
         timeslots.append(cur_event)
     return timeslots
 
 
-
-
-
-if __name__ == '__main__':
-    ro = room_occupancy(Room(
-        region="Z",
-        areal="Z",
-        gebaeude="CAB",
-        geschoss="G",
-        raumNr="11",
-    ))
+if __name__ == "__main__":
+    ro = room_occupancy(
+        Room(
+            region="Z",
+            areal="Z",
+            gebaeude="CAB",
+            geschoss="G",
+            raumNr="11",
+        )
+    )
     for ts in ro:
         print(ts)
