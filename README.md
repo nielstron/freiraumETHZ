@@ -23,7 +23,7 @@ Make sure you have python3.9+ installed and installed all listed requirements.
 Then, edit the variable `FILTER` in example.py to suit your needs. Finally run
 
 ```bash
-python3 example.py
+python3 freiraum.py
 ```
 
 ##### Future vision:

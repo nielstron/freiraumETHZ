@@ -1,7 +1,7 @@
 from urllib.parse import urlparse, parse_qs
 import requests
 from bs4 import BeautifulSoup
-from freiraum.parse_occupancy import Room
+from parse_occupancy import Room
 
 ROOM_LIST_URL = "http://www.rauminfo.ethz.ch/Rauminfo/Index.do?hidden=&gebaeude=-&showAll=alle+R%C3%A4ume+anzeigen&geschoss=-&leitzahl=-"
 
@@ -10,7 +10,7 @@ def all_rooms():
 
     site = r1.text
     #site = open("room_list.html").read()
-    soup = BeautifulSoup(site)
+    soup = BeautifulSoup(site, features="lxml")
     table = soup.find_all("table")[5]
     rooms = []
     for row in table.find_all("tr", recursive=False)[1:]:

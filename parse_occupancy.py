@@ -186,7 +186,7 @@ def room_occupancy(room: Room, date: date = date.today()):
     # week_end = parse_date(match.group("week_end"))
 
     # parse the occupancy table
-    soup = BeautifulSoup(site)
+    soup = BeautifulSoup(site, features="lxml")
     tables = soup.find_all("table")
     occupancy_table = tables[1]
     room_occupancy = table_to_2d(occupancy_table, parse_td)
