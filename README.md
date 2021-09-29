@@ -11,8 +11,22 @@ unoccupied room.
 
 ## How
 
+
 ETHZ provides information on free rooms via http://www.rauminfo.ethz.ch .
 This site is a terrible, terrible source of information and hardly machine readable..
 but it can (and will) be scraped.
+
+##### Current state
+
+Make sure you have python3.9+ installed and installed all listed requirements.
+
+Then, edit the variable `FILTER` in example.py to suit your needs. Finally run
+
+```bash
+python3 example.py
+```
+
+##### Future vision:
+
 The resulting information is fetched once a day and stored in a small relational database
 that can be queried for unoccupied rooms.
