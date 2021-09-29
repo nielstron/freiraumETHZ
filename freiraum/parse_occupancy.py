@@ -171,7 +171,7 @@ def room_occupancy(room: Room, date: date = date.today()):
         "http://www.rauminfo.ethz.ch/Rauminfo/Rauminfo.do", data=post_data
     )
     site = r.text
-    print(site, file=open("room_occupancy.html", "w"))
+    #print(site, file=open("room_occupancy.html", "w"))
     # extract the actual start of the week
     match = next(
         iter(
@@ -205,21 +205,20 @@ def room_occupancy(room: Room, date: date = date.today()):
             end=cur_start_day + timedelta(hours=7),
         )
         for rowc, row in enumerate(col[1:]):
-            cur_start_time_minutes = (
-                cur_start_day + timedelta(hours=7) + rowc * timedelta(minutes=15)
-            )
-            cur_end_time_minutes = (
-                cur_start_day + timedelta(hours=7) + (rowc + 1) * timedelta(minutes=15)
-            )
-            cur_event.end = cur_start_time_minutes
             if not (cur_event.event == row[0] and cur_event.state == row[1]):
+                cur_start_time_minutes = (
+                        cur_start_day + timedelta(hours=7) + rowc * timedelta(minutes=15)
+                )
+                cur_event.end = cur_start_time_minutes
                 timeslots.append(cur_event)
                 cur_event = Timeslot(
                     state=row[1],
                     event=row[0],
                     begin=cur_start_time_minutes,
-                    end=cur_end_time_minutes,
+                    end=cur_start_time_minutes + timedelta(minutes=15),
                 )
+        # last event ends at 22:==
+        cur_event.end = cur_start_day + timedelta(hours=22)
         timeslots.append(cur_event)
     return timeslots
 
