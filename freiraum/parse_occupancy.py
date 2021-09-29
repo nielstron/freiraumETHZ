@@ -97,6 +97,7 @@ class Room:
     gebaeude: str
     geschoss: str
     raumNr: str
+    name: Optional[str]
     rektoratInListe: str = "true"
     raumInRaumgruppe: str = "true"
 
