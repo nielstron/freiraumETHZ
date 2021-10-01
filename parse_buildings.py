@@ -12,9 +12,10 @@ class Building:
     city: str
 
 def buildings():
-    r1 = requests.get(BUILDINGS_URL, headers={"User-Agent": "Spoof"})
+    #r1 = requests.get(BUILDINGS_URL, headers={"User-Agent": "Spoof"})
 
-    site = r1.text
+    #site = r1.text
+    site = open("buildings.html").read()
     soup = BeautifulSoup(site, features="lxml")
     table = soup.find(name="table", attrs={"class":"result donthyphenate"})
     buildings = []
