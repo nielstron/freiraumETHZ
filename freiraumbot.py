@@ -26,7 +26,7 @@ def handle_rooms(update, context):
     if requested_buildings:
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"Okay, suche nach freien Räumen in der Nähe von {','.join(requested_buildings)}"
+            text=f"Okay, suche nach freien Räumen in den Gebäuden {', '.join(requested_buildings)}"
         )
     else:
         context.bot.send_message(

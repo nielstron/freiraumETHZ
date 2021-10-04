@@ -6,6 +6,7 @@ from datetime import timedelta, date, datetime
 import re
 from bs4 import BeautifulSoup
 from itertools import product
+
 import pickle
 from pathlib import Path
 
