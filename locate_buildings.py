@@ -1,5 +1,5 @@
 from typing import List
-from parse_buildings import Building, buildings
+from parse_buildings import Building, all_buildings
 from dataclasses import dataclass, asdict
 import pyphoton
 
@@ -21,7 +21,7 @@ def locate_buildings(buildings: List[Building]):
         )
 
 if __name__ == '__main__':
-    buildings = buildings()
+    buildings = all_buildings()
     located_buildings = locate_buildings(buildings)
     for lb in located_buildings:
         print(lb)
