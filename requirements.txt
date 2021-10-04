@@ -1,4 +1,7 @@
 beautifulsoup4
 requests
 lxml
+
+# locations
 pyphoton
+geopy
