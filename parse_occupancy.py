@@ -6,6 +6,8 @@ from datetime import timedelta, date, datetime
 import re
 from bs4 import BeautifulSoup
 from itertools import product
+import pickle
+from pathlib import Path
 
 
 def table_to_2d(table_tag, value_f=lambda x: x.get_text()):
@@ -97,7 +99,7 @@ class Room:
     gebaeude: str
     geschoss: str
     raumNr: str
-    name: Optional[str]
+    name: Optional[str] = None
     rektoratInListe: str = "true"
     raumInRaumgruppe: str = "true"
 
@@ -153,13 +155,29 @@ def parse_date(date_string: str):
     return datetime(day=day, month=month, year=year)
 
 
-def room_occupancy(room: Room, date: date = date.today()):
+@dataclass
+class CachedRoomOccupancy:
+    begin: date
+    end: date
+    data: List[Timeslot]
+
+
+def room_occupancy(room: Room, date: date = date.today(), cache=Path(".cache")):
     """
     For a room and date fetches and returns the occupancy of a room in the week of the date
     :param room:
     :param date:
+    :param cache:
     :return:
     """
+    if cache:
+        try:
+            with cache.joinpath("".join(map(str, asdict(room).values()))).open("rb") as room_cache_file:
+                rcf: CachedRoomOccupancy = pickle.load(room_cache_file)
+                if rcf.begin <= datetime(date.year, date.month, date.day) <= rcf.end:
+                    return rcf.data
+        except (FileNotFoundError, EOFError):
+            pass
     post_data = {
         "tag": str(date.day),
         "monat": MONTH_TO_DAY.get(date.month, "Unk"),
@@ -183,7 +201,7 @@ def room_occupancy(room: Room, date: date = date.today()):
         )
     )
     week_begin = parse_date(match.group("week_begin"))
-    # week_end = parse_date(match.group("week_end"))
+    week_end = parse_date(match.group("week_end"))
 
     # parse the occupancy table
     soup = BeautifulSoup(site, features="lxml")
@@ -221,6 +239,15 @@ def room_occupancy(room: Room, date: date = date.today()):
         # last event ends at 22:==
         cur_event.end = cur_start_day + timedelta(hours=22)
         timeslots.append(cur_event)
+    if cache:
+        cache.mkdir(parents=True, exist_ok=True)
+        with cache.joinpath("".join(map(str, asdict(room).values()))).open("wb") as room_cache_file:
+            rcf = CachedRoomOccupancy(
+                week_begin,
+                week_end,
+                timeslots
+            )
+            pickle.dump(rcf, room_cache_file)
     return timeslots
 
 
