@@ -5,3 +5,6 @@ lxml
 # locations
 pyphoton
 geopy
+
+# telegram bot
+python-telegram-bot

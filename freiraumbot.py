@@ -32,9 +32,9 @@ def handle_room_message(update, context):
     try:
         message = update.message.text
         __LOGGER__.info(f"Received message: {message}")
-        buildings = set(map(lambda x: x.name, all_buildings()))
-        requested_buildings = {x for x in buildings if re.search(rf"\b{x}\b", message) is not None}
-        __LOGGER__.info(f"Extracted buildings: {buildings}")
+        buildings = all_buildings()
+        requested_buildings = {x.name for x in buildings if re.search(rf"\b{x.name.lower()}\b", message.lower()) is not None}
+        __LOGGER__.info(f"Extracted buildings: {requested_buildings}")
         if requested_buildings:
             context.bot.send_message(
                 chat_id=update.effective_chat.id,
@@ -53,10 +53,10 @@ def handle_room_message(update, context):
             if not requested_buildings or r.gebaeude in requested_buildings:
                 occ = room_occupancy(r)
                 for o in occ:
-                    if o.state == Occupancy.FREE and o.begin <= now <= o.end:
+                    if o.state in {Occupancy.FREE, Occupancy.UNKNOWN, Occupancy.CLOSED} and o.begin <= now <= o.end:
                         context.bot.send_message(
                             chat_id=update.effective_chat.id,
-                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr und {building_dist[r.gebaeude]:.0}m entfernt"
+                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr"
                         )
                         count += 1
                         break
