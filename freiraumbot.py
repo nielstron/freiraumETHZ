@@ -14,7 +14,8 @@ from parse_occupancy import room_occupancy, Occupancy
 
 
 __LOGGER__ = logging.getLogger(__name__)
-__LOGGER__.setLevel(logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                     level=logging.INFO)
 
 occ_str = {
     Occupancy.FREE: "offen",
