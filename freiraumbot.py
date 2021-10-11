@@ -2,7 +2,7 @@ from secrets import TELEGRAM_BOT_TOKEN
 from telegram.ext import Updater, Dispatcher, CommandHandler, MessageHandler, Filters
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, date
 from geopy.distance import geodesic
 from typing import List
 import math
@@ -52,7 +52,7 @@ def handle_room_message(update, context):
         for r in rooms:
             # basic filter for rooms in buildings I am interested in
             if not requested_buildings or r.gebaeude in requested_buildings:
-                occ = room_occupancy(r)
+                occ = room_occupancy(r,date=date.today())
                 for o in occ:
                     if o.state in {Occupancy.FREE, Occupancy.UNKNOWN, Occupancy.CLOSED} and o.begin <= now <= o.end:
                         context.bot.send_message(
@@ -95,7 +95,7 @@ def handle_location(update, context):
         count = 0
         for r in rooms:
             # basic filter for rooms in buildings I am interested in
-            occ = room_occupancy(r)
+            occ = room_occupancy(r, date=date.today())
             for o in occ:
                 if o.state in {Occupancy.FREE, Occupancy.UNKNOWN, Occupancy.CLOSED} and o.begin <= now <= o.end:
                     context.bot.send_message(
