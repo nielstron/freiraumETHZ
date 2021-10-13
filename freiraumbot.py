@@ -7,7 +7,7 @@ from geopy.distance import geodesic
 from typing import List
 import math
 
-from parse_buildings import all_buildings
+from parse_buildings import all_buildings, Building
 from locate_buildings import all_located_buildings, LocatedBuilding
 from parse_room_list import all_rooms, Room
 from parse_occupancy import room_occupancy, Occupancy
@@ -120,6 +120,38 @@ def handle_location(update, context):
         __LOGGER__.error("Unexpected error occured.", exc_info=e)
 
 
+def building_location(update, context):
+    message = update.message.text
+    __LOGGER__.info(f"Received location request: {message}")
+    buildings: List[Building] = all_buildings()
+    found = False
+    for b in buildings:
+        if b.name.lower() in message.lower().split():
+            __LOGGER__.info(f"found {b}")
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"{b.name}\n{b.street},\n{b.zip} {b.city}",
+            )
+            found = True
+            break
+    if not found:
+        __LOGGER__.info(f"Building not found")
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Entschuldige, ich konnte das Gebäude nicht finden",
+        )
+    else:
+        located_buildings: List[LocatedBuilding] = all_located_buildings()
+        for lb in located_buildings:
+            if lb.name.lower() in message.split():
+                __LOGGER__.info(f"found {lb}")
+                context.bot.send_location(
+                    chat_id=update.effective_chat.id,
+                    latitude=lb.lat,
+                    longitude=lb.lon,
+                )
+                return
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
@@ -128,6 +160,9 @@ if __name__ == '__main__':
 
     start_handler = CommandHandler("start", start)
     dispatcher.add_handler(start_handler)
+
+    building_location_handler = CommandHandler("locate", building_location)
+    dispatcher.add_handler(building_location_handler)
 
     room_handler = MessageHandler(Filters.text & (~Filters.command), handle_room_message)
     dispatcher.add_handler(room_handler)
