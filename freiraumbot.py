@@ -78,12 +78,21 @@ def handle_room_message(update, context):
 
 def handle_location(update, context):
     try:
-        location = update.message.location
-        __LOGGER__.info(f"Received location: {location}")
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"Okay, suche nach den 20 nächsten freien Räumen."
-        )
+        if update.message.location:
+            location = update.message.location
+            __LOGGER__.info(f"Received location: {location}")
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"Okay, suche nach den 20 nächsten freien Räumen."
+            )
+            context.user_data["skip_first"] = 0
+            context.user_data["location"] = location
+            skip_first = 0
+        else:
+            # otherwise must have been a "more" request
+            __LOGGER__.info(f"Received request for more buildings")
+            location = context.user_data["location"]
+            skip_first = context.user_data["skip_first"]
         buildings: List[LocatedBuilding] = all_located_buildings()
         building_dist = {b.name: geodesic(
             (b.lat, b.lon), (location["latitude"], location["longitude"])
@@ -98,11 +107,15 @@ def handle_location(update, context):
             occ = room_occupancy(r, date=date.today())
             for o in occ:
                 if o.state in {Occupancy.FREE, Occupancy.UNKNOWN, Occupancy.CLOSED} and o.begin <= now <= o.end:
-                    context.bot.send_message(
-                        chat_id=update.effective_chat.id,
-                        text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr und {int(building_dist[r.gebaeude])}m entfernt"
-                    )
-                    count += 1
+                    if skip_first > 0:
+                        __LOGGER__.info(f"Skipped {r.name}")
+                        skip_first -= 1
+                    else:
+                        context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr und {int(building_dist[r.gebaeude])}m entfernt"
+                        )
+                        count += 1
                     break
             __LOGGER__.info(f"Checked {r.name}")
             if count >= 20:
@@ -112,6 +125,7 @@ def handle_location(update, context):
                 chat_id=update.effective_chat.id,
                 text=f"Entschuldige, ich konnte leider keine freien Räume finden."
             )
+        context.user_data["skip_first"] += count
     except Exception as e:
         context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -121,36 +135,43 @@ def handle_location(update, context):
 
 
 def building_location(update, context):
-    message = update.message.text
-    __LOGGER__.info(f"Received location request: {message}")
-    buildings: List[Building] = all_buildings()
-    found = False
-    for b in buildings:
-        if b.name.lower() in message.lower().split():
-            __LOGGER__.info(f"found {b}")
+    try:
+        message = update.message.text
+        __LOGGER__.info(f"Received location request: {message}")
+        buildings: List[Building] = all_buildings()
+        found = False
+        for b in buildings:
+            if b.name.lower() in message.lower().split():
+                __LOGGER__.info(f"found {b}")
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=f"{b.name}\n{b.street},\n{b.zip} {b.city}",
+                )
+                found = True
+                break
+        if not found:
+            __LOGGER__.info(f"Building not found")
             context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"{b.name}\n{b.street},\n{b.zip} {b.city}",
+                text=f"Entschuldige, ich konnte das Gebäude nicht finden",
             )
-            found = True
-            break
-    if not found:
-        __LOGGER__.info(f"Building not found")
+        else:
+            located_buildings: List[LocatedBuilding] = all_located_buildings()
+            for lb in located_buildings:
+                if lb.name.lower() in message.split():
+                    __LOGGER__.info(f"found {lb}")
+                    context.bot.send_location(
+                        chat_id=update.effective_chat.id,
+                        latitude=lb.lat,
+                        longitude=lb.lon,
+                    )
+                    return
+    except Exception as e:
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"Entschuldige, ich konnte das Gebäude nicht finden",
+            text=f"Ein unerwarteter Fehler ist aufgetreten: {e}"
         )
-    else:
-        located_buildings: List[LocatedBuilding] = all_located_buildings()
-        for lb in located_buildings:
-            if lb.name.lower() in message.split():
-                __LOGGER__.info(f"found {lb}")
-                context.bot.send_location(
-                    chat_id=update.effective_chat.id,
-                    latitude=lb.lat,
-                    longitude=lb.lon,
-                )
-                return
+        __LOGGER__.error("Unexpected error occured.", exc_info=e)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -163,6 +184,9 @@ if __name__ == '__main__':
 
     building_location_handler = CommandHandler("locate", building_location)
     dispatcher.add_handler(building_location_handler)
+
+    more_location_handler = CommandHandler("more", handle_location)
+    dispatcher.add_handler(more_location_handler)
 
     room_handler = MessageHandler(Filters.text & (~Filters.command), handle_room_message)
     dispatcher.add_handler(room_handler)
