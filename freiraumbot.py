@@ -6,6 +6,7 @@ from datetime import datetime, date
 from geopy.distance import geodesic
 from typing import List
 import math
+import textdistance
 
 from parse_buildings import all_buildings, Building
 from locate_buildings import all_located_buildings, LocatedBuilding
@@ -31,20 +32,43 @@ def start(update, context):
 
 def handle_room_message(update, context):
     try:
-        message = update.message.text
+        message: str = update.message.text
         __LOGGER__.info(f"Received message: {message}")
         buildings = all_buildings()
-        requested_buildings = {x.name for x in buildings if re.search(rf"\b{x.name.lower()}\b", message.lower()) is not None}
-        __LOGGER__.info(f"Extracted buildings: {requested_buildings}")
-        if requested_buildings:
+        building_names = {x.name for x in buildings}
+        if message.lower() == "all" or message.lower() == "alle":
+            requested_buildings = building_names
+        else:
+            requested_buildings = {x.name for x in buildings if re.search(rf"\b{x.name.lower()}\b", message.lower()) is not None}
+        if not requested_buildings:
+            # detected missspelling if no building was detected
+            first_building = message.split()[0].upper()
+            alternatives = []
+            alt_min_dist = math.inf
+            for b in building_names:
+                d = textdistance.levenshtein.distance(b, first_building)
+                if alt_min_dist > d:
+                    alt_min_dist = d
+                    alternatives = [b]
+                elif alt_min_dist == d:
+                    alternatives.append(b)
+            __LOGGER__.info(f"Could not find requested building, suggesting most likely match: {alternatives}")
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"Ich konnte das Gebäude {first_building} nicht finden, meintest du eines dieser Gebäude: {', '.join(alternatives)}?"
+            )
+            return
+        if requested_buildings != building_names:
+            __LOGGER__.info(f"Extracted buildings: {requested_buildings}")
             context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=f"Okay, suche nach freien Räumen in den Gebäuden {', '.join(requested_buildings)}"
             )
         else:
+            __LOGGER__.info(f"Extracted buildings: All buildings")
             context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"Okay, suche nach freien Räumen."
+                text=f"Okay, suche nach freien Räumen allen Gebäuden."
             )
         rooms = all_rooms()
         now = datetime.now()
@@ -150,11 +174,23 @@ def building_location(update, context):
                 found = True
                 break
         if not found:
-            __LOGGER__.info(f"Building not found")
+            # detected missspelling if no building was detected
+            first_building = message.split()[1].upper()
+            alternatives = []
+            alt_min_dist = math.inf
+            for b in (b.name for b in buildings):
+                d = textdistance.levenshtein.distance(b, first_building)
+                if alt_min_dist > d:
+                    alt_min_dist = d
+                    alternatives = [b]
+                elif alt_min_dist == d:
+                    alternatives.append(b)
+            __LOGGER__.info(f"Could not find requested building, suggesting most likely match: {alternatives}")
             context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"Entschuldige, ich konnte das Gebäude nicht finden",
+                text=f"Ich konnte das Gebäude {first_building} nicht finden, meintest du eines dieser Gebäude: {', '.join(alternatives)}?"
             )
+            return
         else:
             located_buildings: List[LocatedBuilding] = all_located_buildings()
             for lb in located_buildings:

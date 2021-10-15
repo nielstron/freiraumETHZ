@@ -8,3 +8,6 @@ geopy
 
 # telegram bot
 python-telegram-bot
+
+# suggestions
+textdistance
