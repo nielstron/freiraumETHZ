@@ -11,6 +11,7 @@ from parse_buildings import all_buildings, Building
 from locate_buildings import all_located_buildings, LocatedBuilding
 from parse_room_list import all_rooms, Room
 from parse_occupancy import room_occupancy, Occupancy
+from parse_room_info import room_info
 
 
 __LOGGER__ = logging.getLogger(__name__)
@@ -55,9 +56,10 @@ def handle_room_message(update, context):
                 occ = room_occupancy(r,date=date.today())
                 for o in occ:
                     if o.state in {Occupancy.FREE, Occupancy.UNKNOWN, Occupancy.CLOSED} and o.begin <= now <= o.end:
+                        r_info = room_info(r)
                         context.bot.send_message(
                             chat_id=update.effective_chat.id,
-                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr"
+                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr ({r_info['Raumtyp']} mit {r_info['Sitzplätze']} Sitzplätzen)"
                         )
                         count += 1
                         break
@@ -111,9 +113,10 @@ def handle_location(update, context):
                         __LOGGER__.info(f"Skipped {r.name}")
                         skip_first -= 1
                     else:
+                        r_info = room_info(r)
                         context.bot.send_message(
                             chat_id=update.effective_chat.id,
-                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr und {int(building_dist[r.gebaeude])}m entfernt"
+                            text=f"{r.name} ist frei und {occ_str[o.state]} bis {o.end:%H:%M} Uhr und {int(building_dist[r.gebaeude])}m entfernt ({r_info['Raumtyp']} mit {r_info['Sitzplätze']} Sitzplätzen) "
                         )
                         count += 1
                     break
